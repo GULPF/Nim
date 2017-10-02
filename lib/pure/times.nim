@@ -170,7 +170,13 @@ type
   ## I make some assumptions about the data in here. Either
   ## everything should be positive or everything negative. Zero is
   ## fine too. Mixed signs will lead to unexpected results.
-  TimeInterval* = object ## a time interval
+  TimeInterval* = object ## Represents a period of time.
+    ## Note that ``TimeInterval`` does not represents a fixed amount of time.
+    ## The actual duration of e.g ``initInterval(years = 1, months = 1, days = 1)``
+    ## varies depending on the origin point. E.g a year varies depending on
+    ## leap years, a month varies depending on which month, and a day varies
+    ## depending on if DST was switched.
+
     milliseconds*: int ## The number of milliseconds
     seconds*: int     ## The number of seconds
     minutes*: int     ## The number of minutes
@@ -410,13 +416,7 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ##
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
-  let
-    t = toSeconds(toTime(a))
-    secs = toSeconds(a, -interval)
-  if a.timezone == 0:
-    result = getGMTime(fromSeconds(t + secs))
-  else:
-    result = getLocalTime(fromSeconds(t + secs))
+  a + (-interval)
 
 proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
 
@@ -514,6 +514,28 @@ proc `-`*(t: Time, ti: TimeInterval): Time =
   ##
   ## ``echo getTime() - 1.day``
   result = toTime(getLocalTime(t) - ti)
+
+proc initTimeInfo*(monthday: range[1..31], month: range[1..12], year: int,
+                   hour: range[0..23], minute: range[0..59], second: range[0..61], isGmt = false): TimeInfo =
+  assert month <= getDaysInMonth((month - 1).Month, year),
+    "Invalid day of month for " & $(month - 1).Month & " " & $year
+
+  let info = TimeInfo(
+    year: year,
+    month: (month - 1).Month,
+    monthday: monthday,
+    hour: hour,
+    minute: minute,
+    second: second,
+    timezone: getTimezone())
+  echo info.hour
+  if isGmt:
+    return getGMTime(toTime(info))
+  else:
+    return getLocalTime(toTime(info))
+
+proc initTimeInfo*(monthday: range[1..31], month: range[1..12], year: int, isGmt = false): TimeInfo =
+  initTimeInfo(monthday, month, year, 0, 0, 0, isGmt)
 
 const
   secondsInMin = 60
@@ -1393,7 +1415,7 @@ when isMainModule:
   var
     t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
     t4L = getLocalTime(fromSeconds(876124714))
-  assert toSeconds(t4, initInterval(seconds=0)) == 0.0
+  assert toSeconds(t4, initInterval(seconds=0)) == (0.0, 0.0)
   assert toSeconds(t4L, initInterval(milliseconds=1)) == toSeconds(t4, initInterval(milliseconds=1))
   assert toSeconds(t4L, initInterval(seconds=1)) == toSeconds(t4, initInterval(seconds=1))
   assert toSeconds(t4L, initInterval(minutes=1)) == toSeconds(t4, initInterval(minutes=1))
