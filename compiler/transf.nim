@@ -407,7 +407,11 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
     # we don't include uint and uint64 here as these are no ordinal types ;-)
     if not isOrdinalType(source):
       # float -> int conversions. ugh.
-      result = transformSons(c, n)
+      result = newTransNode(nkChckRangeF, n, 3)
+      dest = skipTypes(n.typ, abstractVar)
+      result[0] = transform(c, n.sons[1])
+      result[1] = newIntTypeNode(nkIntLit, firstOrd(dest), dest).PTransNode
+      result[2] = newIntTypeNode(nkIntLit, lastOrd(dest), dest).PTransNode
     elif firstOrd(n.typ) <= firstOrd(n.sons[1].typ) and
         lastOrd(n.sons[1].typ) <= lastOrd(n.typ):
       # BUGFIX: simply leave n as it is; we need a nkConv node,
