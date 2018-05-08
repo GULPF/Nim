@@ -1557,6 +1557,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyVar, tyLent, tyPointer, tyPtr, tyExpr,
      tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
+    result.flags.incl nfIsRef
   of tyProc:
     if t.callConv != ccClosure:
       result = newNodeIT(nkNilLit, info, t)
