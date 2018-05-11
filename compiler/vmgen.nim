@@ -592,9 +592,14 @@ proc genNew(c: PCtx; n: PNode) =
              else: c.genx(n.sons[1])
   # we use the ref's base type here as the VM conflates 'ref object'
   # and 'object' since internally we already have a pointer.
-  c.gABx(n, opcNew, dest,
-         c.genType(n.sons[1].typ.skipTypes(abstractVar-{tyTypeDesc}).sons[0]))
-  c.genAsgnPatch(n.sons[1], dest)
+  if optNewVm in gGlobalOptions:
+    # Nope, we dont
+    c.gABx(n, opcNew, dest,
+          c.genType(n.sons[1].typ.skipTypes(abstractVar-{tyTypeDesc})))
+    c.genAsgnPatch(n.sons[1], dest)
+  else:
+      c.gABx(n, opcNew, dest,
+          c.genType(n.sons[1].typ.skipTypes(abstractVar-{tyTypeDesc}).sons[0]))
   c.freeTemp(dest)
 
 proc genNewSeq(c: PCtx; n: PNode) =
@@ -1246,6 +1251,13 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   let af = if n[0].kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr}: {gfAddrOf, gfFieldAccess}
            else: {gfAddrOf}
   let newflags = if isAddr: flags+af else: flags
+
+  if optnewVm in gGlobalOptions and opc == opcLdDeref:
+    let tmp = c.genx(n.sons[0], newflags)
+    if dest < 0: dest = c.getTemp(n.typ)
+    gABC(c, n, opc, dest, tmp)
+    return
+
   # consider:
   # proc foo(f: var ref int) =
   #   f = new(int)
@@ -1557,7 +1569,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyVar, tyLent, tyPointer, tyPtr, tyExpr,
      tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
-    result.flags.incl nfIsRef
+    # if t.kind in {tyLent, tyPointer, tyPtr, tyRef, tyNil}:
+    #   result.flags.incl nfIsRef
   of tyProc:
     if t.callConv != ccClosure:
       result = newNodeIT(nkNilLit, info, t)
@@ -1690,10 +1703,20 @@ proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
 proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
   let t = n.typ.skipTypes(abstractRange-{tyTypeDesc})
-  if t.kind == tyRef:
-    c.gABx(n, opcNew, dest, c.genType(t.sons[0]))
+
+  if optNewVm in gGlobalOptions:
+    # We no longer wants to skip the ref type information.
+    # Note that this was really broken before since it only skipped
+    # one level of ref.
+    if t.kind == tyRef:
+      c.gABx(n, opcNew, dest, c.genType(t))
+    else:
+      c.gABx(n, opcLdNull, dest, c.genType(n.typ))
   else:
-    c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+    if t.kind == tyRef:
+      c.gABx(n, opcNew, dest, c.genType(t.sons[0]))
+    else:
+      c.gABx(n, opcLdNull, dest, c.genType(n.typ))
   for i in 1..<n.len:
     let it = n.sons[i]
     if it.kind == nkExprColonExpr and it.sons[0].kind == nkSym:

@@ -524,6 +524,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     #if optThreads in gGlobalOptions: incl(gNotes, warnGcUnsafe)
   of "tlsemulation": processOnOffSwitchG({optTlsEmulation}, arg, pass, info)
   of "taintmode": processOnOffSwitchG({optTaintMode}, arg, pass, info)
+  of "newvm": processOnOffSwitchG({optNewVm}, arg, pass, info)
   of "implicitstatic":
     processOnOffSwitch({optImplicitStatic}, arg, pass, info)
   of "patterns":

@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, idents, intsets, options
+import ast, passes, msgs, idents, intsets, options, types
 
 const
   byteExcess* = 128 # we use excess-K for immediates
@@ -137,7 +137,44 @@ type
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
-    opcToNarrowInt
+    opcToNarrowInt,
+
+    opcDeref
+
+  RegValueKind* = enum ## Some notes on the design:
+                       ## rkComposite is only required for types that
+                       ## can contain ref types. This means that even though
+                       ## `set` is a composite type, it's harmless to store
+                       ## it in a `rkNode` since the sons can't have ref
+                       ## semantics. Implementing ref semantics inside `rkNode`
+                       ## is not possible.
+                       ##
+                       ## For string the argument is the same. Since the items
+                       ## in a string always has value semantics, `rkNode`
+                       ## works without issues.
+    rkNone         # Empty register
+    rkNode         # set/proc/typedesc/string
+    rkInt          # int
+    rkFloat        # float
+    rkRegisterAddr # legacy
+    rkNodeAddr     # legacy
+    rkRef          # ref types
+    # rkPtr          # ptr types
+    rkComposite    # object/tuple/seq
+
+  RegValue* = object   # with a custom mark proc, we could use the same
+                      # data representation as LuaJit (tagged NaNs).
+    case kind*: RegValueKind
+    of rkNone: discard
+    of rkInt: intVal*: BiggestInt
+    of rkFloat: floatVal*: BiggestFloat
+    of rkNode: node*: PNode
+    of rkRegisterAddr: regAddr*: ptr RegValue
+    of rkNodeAddr: nodeAddr*: ptr PNode
+
+    # of rkPtr: ptrVal: ptr RegValue
+    of rkComposite: sons*: seq[RegValue]
+    of rkRef: refValue*: ref RegValue
 
   TBlock* = object
     label*: PSym

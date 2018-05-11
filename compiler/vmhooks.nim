@@ -8,8 +8,8 @@
 #
 
 template setX(k, field) {.dirty.} =
-  var s: seq[TFullReg]
-  move(s, cast[seq[TFullReg]](a.slots))
+  var s: seq[RegValue]
+  move(s, cast[seq[RegValue]](a.slots))
   if s[a.ra].kind != k:
     myreset(s[a.ra])
     s[a.ra].kind = k
@@ -22,8 +22,8 @@ proc setResult*(a: VmArgs; v: bool) =
   setX(rkInt, intVal)
 
 proc setResult*(a: VmArgs; v: string) =
-  var s: seq[TFullReg]
-  move(s, cast[seq[TFullReg]](a.slots))
+  var s: seq[RegValue]
+  move(s, cast[seq[RegValue]](a.slots))
   if s[a.ra].kind != rkNode:
     myreset(s[a.ra])
     s[a.ra].kind = rkNode
@@ -31,16 +31,16 @@ proc setResult*(a: VmArgs; v: string) =
   s[a.ra].node.strVal = v
 
 proc setResult*(a: VmArgs; n: PNode) =
-  var s: seq[TFullReg]
-  move(s, cast[seq[TFullReg]](a.slots))
+  var s: seq[RegValue]
+  move(s, cast[seq[RegValue]](a.slots))
   if s[a.ra].kind != rkNode:
     myreset(s[a.ra])
     s[a.ra].kind = rkNode
   s[a.ra].node = n
 
 proc setResult*(a: VmArgs; v: seq[string]) =
-  var s: seq[TFullReg]
-  move(s, cast[seq[TFullReg]](a.slots))
+  var s: seq[RegValue]
+  move(s, cast[seq[RegValue]](a.slots))
   if s[a.ra].kind != rkNode:
     myreset(s[a.ra])
     s[a.ra].kind = rkNode
@@ -50,7 +50,7 @@ proc setResult*(a: VmArgs; v: seq[string]) =
 
 template getX(k, field) {.dirty.} =
   doAssert i < a.rc-1
-  let s = cast[seq[TFullReg]](a.slots)
+  let s = cast[seq[RegValue]](a.slots)
   doAssert s[i+a.rb+1].kind == k
   result = s[i+a.rb+1].field
 
@@ -59,12 +59,12 @@ proc getBool*(a: VmArgs; i: Natural): bool = getInt(a, i) != 0
 proc getFloat*(a: VmArgs; i: Natural): BiggestFloat = getX(rkFloat, floatVal)
 proc getString*(a: VmArgs; i: Natural): string =
   doAssert i < a.rc-1
-  let s = cast[seq[TFullReg]](a.slots)
+  let s = cast[seq[RegValue]](a.slots)
   doAssert s[i+a.rb+1].kind == rkNode
   result = s[i+a.rb+1].node.strVal
 
 proc getNode*(a: VmArgs; i: Natural): PNode =
   doAssert i < a.rc-1
-  let s = cast[seq[TFullReg]](a.slots)
+  let s = cast[seq[RegValue]](a.slots)
   doAssert s[i+a.rb+1].kind == rkNode
   result = s[i+a.rb+1].node

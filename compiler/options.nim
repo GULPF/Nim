@@ -67,6 +67,7 @@ type                          # please make sure we have under 32 options
     optGenIndex               # generate index file for documentation;
     optEmbedOrigSrc           # embed the original source in the generated code
                               # also: generate header file
+    optNewVm
     optIdeDebug               # idetools: debug mode
     optIdeTerse               # idetools: use terse descriptions
     optNoCppExceptions        # use C exception handling even with CPP
