@@ -2807,6 +2807,9 @@ proc max*[T](x, y: T): T {.inline.}=
 proc high*(T: typedesc[SomeFloat]): T = Inf
 proc low*(T: typedesc[SomeFloat]): T = NegInf
 
+proc low*[T: uint|uint64](x: typedesc[T]): T = T(0)
+proc high*[T: uint|uint64](x: typedesc[T]): T = cast[T](-1)
+
 proc clamp*[T](x, a, b: T): T =
   ## Limits the value ``x`` within the interval [a, b].
   ##
